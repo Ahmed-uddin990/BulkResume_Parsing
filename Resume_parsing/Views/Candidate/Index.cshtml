@@ -1,0 +1,85 @@
+﻿@model IEnumerable<dynamic>
+
+@{
+    ViewData["Title"] = "Candidate Results";
+}
+
+<div class="container mt-2">
+    <div class="card shadow-lg border-0 rounded-3">
+        <div class="card-header bg-primary text-white text-center py-3">
+            <h3 class="mb-0">Candidate Search Results</h3>
+        </div>
+        <div class="card-body p-4">
+            <h5 class="card-title text-primary mb-4">Filter Candidates</h5>
+            <form method="get" asp-action="Index">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" name="skillFilter" class="form-control" placeholder="Search with Skill" value="@ViewData["skillFilter"]" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-sort-numeric-down"></i></span>
+                            <input type="number" name="minExperience" class="form-control" placeholder="Min Experience" value="@ViewData["minExperience"]" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-sort-numeric-up"></i></span>
+                            <input type="number" name="maxExperience" class="form-control" placeholder="Max Experience" value="@ViewData["maxExperience"]" />
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>&nbsp; search
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            @if (Model == null || !Model.Any())
+            {
+                <div class="alert alert-info text-center" role="alert">
+                    <i class="fas fa-info-circle"></i> No candidates found matching the criteria.
+                </div>
+            }
+            else
+            {
+                <h5 class="card-title text-primary mb-3">Matching Candidates</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Skills</th>
+                                <th>Total Experience</th>
+                                <th>CV Link</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var candidate in Model)
+                            {
+                                <tr>
+                                    <td>@candidate.Name</td>
+                                    <td>@Html.Raw(candidate.Skills)</td>
+                                    <td>@candidate.TotalExperience</td>
+                                    <td>
+                                        <a asp-controller="Candidate"
+                                           asp-action="DownloadCv"
+                                           asp-route-fileName="@candidate.Link"
+                                           target="_blank"
+                                           class="btn btn-outline-secondary btn-sm">
+                                            View CV
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

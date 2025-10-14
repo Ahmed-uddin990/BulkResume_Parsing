@@ -1,0 +1,253 @@
+﻿@{
+    ViewData["Title"] = "Bulk Resume Parser";
+}
+
+<div class="container mt-2">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0 rounded-3">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h3 class="mb-0">Bulk Resume Parser</h3>
+                </div>
+                <div class="card-body p-4">
+                    <form id="parser-form">
+                        <div class="mb-3">
+                            <label for="jobName" class="form-label">Job Name</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-briefcase"></i></span>
+                                <input type="text" class="form-control" id="jobName" name="jobName" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="userEmail" class="form-label">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="userEmail" name="userEmail" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="folderPath" class="form-label">Folder Path</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-folder"></i></span>
+                                <input type="text" class="form-control" id="folderPath" name="folderPath" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="fileLimit" class="form-label">File Limit</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-file"></i></span>
+                                <input type="number" class="form-control" id="fileLimit" name="fileLimit" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" id="submit-btn">
+                            <span id="submit-text">Start Parsing </span>
+                            <span id="submit-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
+                    </form>
+
+                    <div id="status-container" class="mt-4" style="display: none;">
+                        <h4 class="mb-3">Job Status: <span id="job-name-display"></span></h4>
+                        <div class="progress mb-2">
+                            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                        <div class="d-flex justify-content-between text-center fw-bold">
+                            <span class="text-info">Processed: <span id="processed-count">0</span> / <span id="total-count">0</span></span>
+                            <span class="text-success">Passed: <span id="passed-count">0</span></span>
+                            <span class="text-danger">Failed: <span id="failed-count">0</span></span>
+                        </div>
+                        <div class="text-center mt-3" id="reparse-container" style="display: none;">
+                            <button id="reparse-btn" class="btn btn-warning">
+                                <span id="reparse-text">Reparse Failed Resumes</span>
+                                <span id="reparse-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('parser-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const submitText = document.getElementById('submit-text');
+            const submitSpinner = document.getElementById('submit-spinner');
+
+            const statusContainer = document.getElementById('status-container');
+            const jobNameDisplay = document.getElementById('job-name-display');
+            const progressBar = document.getElementById('progress-bar');
+            const totalCount = document.getElementById('total-count');
+            const processedCount = document.getElementById('processed-count');
+            const passedCount = document.getElementById('passed-count');
+            const failedCount = document.getElementById('failed-count');
+            const reparseContainer = document.getElementById('reparse-container');
+            const reparseBtn = document.getElementById('reparse-btn');
+            const reparseText = document.getElementById('reparse-text');
+            const reparseSpinner = document.getElementById('reparse-spinner');
+
+            let pollingInterval;
+            let currentJobDatabaseId;
+            let currentJobIdPython;
+            let currentFailedCount = 0;
+
+            const toggleButtonState = (isProcessing) => {
+                submitBtn.disabled = isProcessing;
+                if (isProcessing) {
+                    submitText.textContent = "Starting...";
+                    submitSpinner.classList.remove('d-none');
+                } else {
+                    submitText.textContent = "Start Parsing Job";
+                    submitSpinner.classList.add('d-none');
+                }
+            };
+
+            const updateProgressBar = (processed, total, passed, failed) => {
+                const percentage = total > 0 ? (processed / total) * 100 : 0;
+                progressBar.style.width = `${percentage}%`;
+                progressBar.textContent = `${Math.round(percentage)}%`;
+                progressBar.setAttribute('aria-valuenow', percentage);
+
+                if (percentage === 100) {
+                    progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                    progressBar.classList.add('bg-success');
+                } else {
+                    progressBar.classList.add('progress-bar-animated', 'progress-bar-striped');
+                    progressBar.classList.remove('bg-success');
+                }
+
+                totalCount.textContent = total;
+                processedCount.textContent = processed;
+                passedCount.textContent = passed;
+                failedCount.textContent = failed;
+            };
+
+            const startPolling = (jobDatabaseId, jobIdPython) => {
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                }
+
+                pollingInterval = setInterval(async () => {
+                    try {
+                        // CORRECTED: Make a POST request with a JSON body
+                        const statusResponse = await fetch('/api/Parsing/status', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                jobDatabaseId: jobDatabaseId,
+                                jobIdPython: jobIdPython
+                            })
+                        });
+
+                        if (!statusResponse.ok) {
+                            console.error("Failed to fetch job status.");
+                            clearInterval(pollingInterval);
+                            return;
+                        }
+
+                        const stats = await statusResponse.json();
+
+                        if (stats.data) {
+                            updateProgressBar(stats.data.processed, stats.data.total, stats.data.passed, stats.data.failed);
+                            currentFailedCount = stats.data.data.failed;
+                        }
+
+                        if (stats.isComplete) {
+                            clearInterval(pollingInterval);
+                            if (currentFailedCount > 0) {
+                                reparseContainer.style.display = 'block';
+                            }
+                            // Redirect after a short delay
+                            setTimeout(() => {
+                                window.location.href = `/Candidate/JobProgressHistory?jobId=${jobDatabaseId}`;
+                            }, 2000);
+                        }
+                    } catch (error) {
+                        console.error("An error occurred during polling:", error);
+                        clearInterval(pollingInterval);
+                    }
+                }, 5000);
+            };
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                toggleButtonState(true);
+
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                }
+
+                statusContainer.style.display = 'none';
+                reparseContainer.style.display = 'none';
+
+                const formData = new FormData(form);
+                const jobName = document.getElementById('jobName').value;
+
+                try {
+                    const startResponse = await fetch('/api/Parsing/start', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!startResponse.ok) {
+                        const errorData = await startResponse.json();
+                        throw new Error(errorData.message || 'Failed to start job.');
+                    }
+
+                    const startData = await startResponse.json();
+                    const { jobDatabaseId, jobIdPython } = startData;
+
+                    currentJobDatabaseId = jobDatabaseId;
+                    currentJobIdPython = jobIdPython;
+
+                    jobNameDisplay.textContent = jobName;
+                    statusContainer.style.display = 'block';
+                    updateProgressBar(0, 0, 0, 0);
+
+                    startPolling(jobDatabaseId, jobIdPython);
+
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                    toggleButtonState(false);
+                    if (pollingInterval) clearInterval(pollingInterval);
+                }
+            });
+
+            reparseBtn.addEventListener('click', async () => {
+                reparseBtn.disabled = true;
+                reparseText.textContent = "Reparsing...";
+                reparseSpinner.classList.remove('d-none');
+
+                try {
+                    const formData = new FormData();
+                    formData.append('jobIdPython', currentJobIdPython);
+
+                    const reparseResponse = await fetch('/api/Parsing/reparse-failed', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!reparseResponse.ok) {
+                        const errorData = await reparseResponse.json();
+                        throw new Error(errorData.message || 'Failed to start re-parsing.');
+                    }
+
+                    alert('Re-parsing job started successfully!');
+                    reparseContainer.style.display = 'none';
+                    startPolling(currentJobDatabaseId, currentJobIdPython);
+
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    reparseBtn.disabled = false;
+                    reparseText.textContent = "Reparse Failed Resumes";
+                    reparseSpinner.classList.add('d-none');
+                }
+            });
+        });
+    </script>
+}

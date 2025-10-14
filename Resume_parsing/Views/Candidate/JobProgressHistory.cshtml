@@ -1,0 +1,96 @@
+﻿@model IEnumerable<Resume_parsing.Models.JobProgressViewModel>
+
+@{
+    ViewData["Title"] = "Job Parsing History";
+    int? highlightedJobId = ViewBag.HighlightedJobId;
+}
+
+<style>
+    .highlight-row {
+        animation: pulse 1.5s infinite;
+    }
+
+    @@keyframes pulse {
+        0% {
+            background-color: #d1e7dd; /* Success light */
+        }
+
+        50% {
+            background-color: #badbcc; /* Success darker */
+        }
+
+        100% {
+            background-color: #d1e7dd;
+        }
+    }
+</style>
+
+<div class="container mt-2">
+    <div class="card shadow-lg border-0 rounded-3">
+        <div class="card-header bg-primary text-white text-center py-3">
+            <h3 class="mb-0">Job Parsing History</h3>
+        </div>
+        <div class="card-body p-4">
+            @if (!Model.Any())
+            {
+                <div class="alert alert-info text-center" role="alert">
+                    No job parsing history found.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="bg-light">
+                            <tr>
+                                <th scope="col">Job Name</th>
+                                <th scope="col">Total</th>
+                                <th scope="col">Passed</th>
+                                <th scope="col">Failed</th>
+                                <th scope="col"> Date</th>
+                                <th scope="col" style="min-width: 150px;">Progress</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                int percentage = (item.Total ?? 0) > 0 ? ((item.Processed ?? 0) * 100) / (item.Total ?? 0) : 0;
+                                string progressBarClass = percentage == 100 ? "bg-success" : "bg-primary progress-bar-striped progress-bar-animated";
+                                string statusBadgeClass = percentage == 100 ? "badge bg-success" : "badge bg-primary";
+                                string statusText = percentage == 100 ? "Completed" : "Running";
+                                string rowClass = (highlightedJobId.HasValue && highlightedJobId.Value == item.JobIdDatabase) ? "highlight-row" : "";
+
+                                <tr class="@rowClass">
+                                    <td>@Html.DisplayFor(modelItem => item.JobName)</td>
+                                    <td>@Html.DisplayFor(modelItem => item.Total)</td>
+                                    <td>
+                                        <span class="badge bg-success">@Html.DisplayFor(modelItem => item.Passed)</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger">@Html.DisplayFor(modelItem => item.Failed)</span>
+                                    </td>
+                                    <td>@Html.DisplayFor(modelItem => item.CreatedDate)</td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar @progressBarClass" role="progressbar" style="width: @(percentage)%;" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
+                                                @(percentage)%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="@statusBadgeClass">@statusText</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+}
