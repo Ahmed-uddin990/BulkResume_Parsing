@@ -1,0 +1,151 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Resume_parsing",
+    "version": "1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Parsing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Parsing/start": {
+      "post": {
+        "tags": [
+          "Parsing"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobName": {
+                    "type": "string"
+                  },
+                  "userEmail": {
+                    "type": "string"
+                  },
+                  "folderPath": {
+                    "type": "string"
+                  },
+                  "fileLimit": {
+                    "type": "integer",
+                    "format": "int32"
+                  }
+                }
+              },
+              "encoding": {
+                "jobName": {
+                  "style": "form"
+                },
+                "userEmail": {
+                  "style": "form"
+                },
+                "folderPath": {
+                  "style": "form"
+                },
+                "fileLimit": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Parsing/status": {
+      "post": {
+        "tags": [
+          "Parsing"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobStatusRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobStatusRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Parsing/reparse-failed": {
+      "post": {
+        "tags": [
+          "Parsing"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobIdPython": {
+                    "type": "string"
+                  }
+                }
+              },
+              "encoding": {
+                "jobIdPython": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "JobStatusRequest": {
+        "type": "object",
+        "properties": {
+          "jobDatabaseId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "jobIdPython": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
